@@ -1,11 +1,10 @@
 """
-This tool
+Python March Madness predictor using linear regression technique to predict game outcomes for teams in playoffs.
 """
+import sys, getopt, datetime, math, csv, random, os
 import pandas as pd
-import math
-from sklearn import cross_validation, linear_model
-import csv
-import random
+from sklearn import linear_model
+from sklearn.model_selection import cross_val_score
 
 base_elo = 1600
 team_elos = {}  # Reset each year.
@@ -13,8 +12,9 @@ team_stats = {}
 X = []
 y = []
 submission_data = []
-folder = 'data-v2'
-prediction_year = 2016
+
+stat_fields = ['score', 'fga', 'fgp', 'fga3', '3pp', 'ftp', 'or', 'dr',
+               'ast', 'to', 'stl', 'blk', 'pf']
 
 
 def calc_elo(win_team, lose_team, season):
@@ -41,8 +41,8 @@ def calc_elo(win_team, lose_team, season):
     return new_winner_rank, new_loser_rank
 
 
-def initialize_data():
-    for i in range(1985, 2017):
+def initialize_data(prediction_year):
+    for i in range(1985, prediction_year+1):
         team_elos[i] = {}
         team_stats[i] = {}
 
@@ -110,7 +110,7 @@ def get_stat(season, team, field):
         return 0
 
 
-def build_team_dict():
+def build_team_dict(folder):
     team_ids = pd.read_csv(folder + '/Teams.csv')
     team_id_map = {}
     for index, row in team_ids.iterrows():
@@ -208,11 +208,46 @@ def build_season_data(all_data):
     return X, y
 
 
-if __name__ == "__main__":
-    stat_fields = ['score', 'fga', 'fgp', 'fga3', '3pp', 'ftp', 'or', 'dr',
-                   'ast', 'to', 'stl', 'blk', 'pf']
+def usage():
+    print("This is the usage function\n")
+    print("Usage: %s -d <data directory> " % sys.argv[0])
 
-    initialize_data()
+def main(argv):
+    folder = prediction_year = ''
+
+    try:
+        opts, args = getopt.getopt(argv, "hy:d:", ["directory=", "year="])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            usage()
+            sys.exit()
+        elif opt == '-y':
+            prediction_year = int(arg)
+        elif opt in ("-d", "--directory"):
+            folder = arg
+
+    if (folder == ''):
+        usage()
+        sys.exit()
+
+    if not prediction_year:
+        print("Selecting current year for picks.\n")
+        prediction_year = int(datetime.datetime.now().strftime("%Y"))
+
+    try:
+        ret = os.access(folder, os.W_OK)
+        if not ret:
+            sys.exit('Error with filesystem access ' + folder)
+    except IOError:
+        sys.exit('Error with filesystem access ' + folder)
+
+    print("Generating results for the %d tournament." % prediction_year)
+
+    initialize_data(prediction_year)
     season_data = pd.read_csv(folder + '/RegularSeasonDetailedResults.csv')
     tourney_data = pd.read_csv(folder + '/TourneyDetailedResults.csv')
     frames = [season_data, tourney_data]
@@ -228,7 +263,7 @@ if __name__ == "__main__":
 
     # Check accuracy.
     print("Doing cross-validation.")
-    print(cross_validation.cross_val_score(
+    print(cross_val_score(
         model, X, y, cv=10, scoring='accuracy', n_jobs=-1
     ).mean())
 
@@ -252,7 +287,7 @@ if __name__ == "__main__":
                 prediction = predict_winner(
                     team_1, team_2, model, prediction_year, stat_fields)
                 label = str(prediction_year) + '_' + str(team_1) + '_' + \
-                    str(team_2)
+                        str(team_2)
                 submission_data.append([label, prediction[0][0]])
 
     # Write the results.
@@ -265,7 +300,7 @@ if __name__ == "__main__":
     # Now so that we can use this to fill out a bracket, create a readable
     # version.
     print("Outputting readable results.")
-    team_id_map = build_team_dict()
+    team_id_map = build_team_dict(folder)
     readable = []
     less_readable = []  # A version that's easy to look up.
     for pred in submission_data:
@@ -293,3 +328,8 @@ if __name__ == "__main__":
     with open(folder + '/less-readable-predictions.csv', 'w') as f:
         writer = csv.writer(f)
         writer.writerows(less_readable)
+
+
+if __name__ == "__main__":
+    print("====== March Madness ML Test ======")
+    main(sys.argv[1:])
