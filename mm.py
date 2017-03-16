@@ -214,7 +214,6 @@ def build_season_data(all_data):
 
 
 def usage():
-    print("This is the usage function\n")
     print("Usage: %s -d <data directory> " % sys.argv[0])
 
 def main(argv):
