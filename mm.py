@@ -3,6 +3,7 @@ Python March Madness predictor using linear regression technique to predict game
 """
 import sys, getopt, datetime, math, csv, random, os
 import pandas as pd
+import numpy
 from sklearn import linear_model
 from sklearn.model_selection import cross_val_score
 
@@ -264,7 +265,7 @@ def main(argv):
     # Check accuracy.
     print("Doing cross-validation.")
     print(cross_val_score(
-        model, X, y, cv=10, scoring='accuracy', n_jobs=-1
+        model, numpy.array(X), numpy.array(y), cv=10, scoring='accuracy', n_jobs=-1
     ).mean())
 
     model.fit(X, y)
