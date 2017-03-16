@@ -12,7 +12,7 @@ Requirements
 
 Python3
 
-```pip install sklearn pandas```
+```pip install -r requirements.txt```
 
 To run
 ======
