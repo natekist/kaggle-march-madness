@@ -1,5 +1,9 @@
 """
-Python March Madness predictor using linear regression technique to predict game outcomes for teams in playoffs.
+This tool uses the data provided by the Kaggle Machine Learning Mania challenge
+and generates predictions for March Madness brackets.
+
+More about the competition:
+https://www.kaggle.com/c/march-machine-learning-mania-2017
 """
 import sys, getopt, datetime, math, csv, random, os
 import pandas as pd
