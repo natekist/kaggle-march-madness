@@ -119,7 +119,7 @@ def build_team_dict(folder):
     team_ids = pd.read_csv(folder + '/Teams.csv')
     team_id_map = {}
     for index, row in team_ids.iterrows():
-        team_id_map[row['Team_Id']] = row['Team_Name']
+        team_id_map[row['TeamID']] = row['TeamName']
     return team_id_map
 
 
@@ -134,13 +134,13 @@ def build_season_data(all_data):
         skip = 0
 
         # Get starter or previous elos.
-        team_1_elo = get_elo(row['Season'], row['Wteam'])
-        team_2_elo = get_elo(row['Season'], row['Lteam'])
+        team_1_elo = get_elo(row['Season'], row['WTeamID'])
+        team_2_elo = get_elo(row['Season'], row['LTeamID'])
 
         # Add 100 to the home team (# taken from Nate Silver analysis.)
-        if row['Wloc'] == 'H':
+        if row['WLoc'] == 'H':
             team_1_elo += 100
-        elif row['Wloc'] == 'A':
+        elif row['WLoc'] == 'A':
             team_2_elo += 100
 
         # We'll create some arrays to use later.
@@ -149,8 +149,8 @@ def build_season_data(all_data):
 
         # Build arrays out of the stats we're tracking..
         for field in stat_fields:
-            team_1_stat = get_stat(row['Season'], row['Wteam'], field)
-            team_2_stat = get_stat(row['Season'], row['Lteam'], field)
+            team_1_stat = get_stat(row['Season'], row['WTeamID'], field)
+            team_2_stat = get_stat(row['Season'], row['LTeamID'], field)
             if team_1_stat is not 0 and team_2_stat is not 0:
                 team_1_features.append(team_1_stat)
                 team_2_features.append(team_2_stat)
@@ -170,47 +170,61 @@ def build_season_data(all_data):
         # AFTER we add the current stuff to the prediction, update for
         # next time. Order here is key so we don't fit on data from the
         # same game we're trying to predict.
-        if row['Wfta'] != 0 and row['Lfta'] != 0:
+        if row['WFTA'] != 0 and row['LFTA'] != 0:
             stat_1_fields = {
-                'score': row['Wscore'],
-                'fgp': row['Wfgm'] / row['Wfga'] * 100,
-                'fga': row['Wfga'],
-                'fga3': row['Wfga3'],
-                '3pp': row['Wfgm3'] / row['Wfga3'] * 100,
-                'ftp': row['Wftm'] / row['Wfta'] * 100,
-                'or': row['Wor'],
-                'dr': row['Wdr'],
-                'ast': row['Wast'],
-                'to': row['Wto'],
-                'stl': row['Wstl'],
-                'blk': row['Wblk'],
-                'pf': row['Wpf']
+                'score': row['WScore'],
+                'fgp': row['WFGM'] / row['WFGA'] * 100,
+                'fga': row['WFGA'],
+                'fga3': row['WFGA3'],
+                '3pp': row['WFGM3'] / row['WFGA3'] * 100,
+                'ftp': row['WFTM'] / row['WFTA'] * 100,
+                'or': row['WOR'],
+                'dr': row['WDR'],
+                'ast': row['WAst'],
+                'to': row['WTO'],
+                'stl': row['WStl'],
+                'blk': row['WBlk'],
+                'pf': row['WPF']
             }
             stat_2_fields = {
-                'score': row['Lscore'],
-                'fgp': row['Lfgm'] / row['Lfga'] * 100,
-                'fga': row['Lfga'],
-                'fga3': row['Lfga3'],
-                '3pp': row['Lfgm3'] / row['Lfga3'] * 100,
-                'ftp': row['Lftm'] / row['Lfta'] * 100,
-                'or': row['Lor'],
-                'dr': row['Ldr'],
-                'ast': row['Last'],
-                'to': row['Lto'],
-                'stl': row['Lstl'],
-                'blk': row['Lblk'],
-                'pf': row['Lpf']
+                'score': row['LScore'],
+                'fgp': row['LFGM'] / row['LFGA'] * 100,
+                'fga': row['LFGA'],
+                'fga3': row['LFGA3'],
+                '3pp': row['LFGM3'] / row['LFGA3'] * 100,
+                'ftp': row['LFTM'] / row['LFTA'] * 100,
+                'or': row['LOR'],
+                'dr': row['LDR'],
+                'ast': row['LAst'],
+                'to': row['LTO'],
+                'stl': row['LStl'],
+                'blk': row['LBlk'],
+                'pf': row['LPF']
             }
-            update_stats(row['Season'], row['Wteam'], stat_1_fields)
-            update_stats(row['Season'], row['Lteam'], stat_2_fields)
+            update_stats(row['Season'], row['WTeamID'], stat_1_fields)
+            update_stats(row['Season'], row['LTeamID'], stat_2_fields)
 
         # Now that we've added them, calc the new elo.
         new_winner_rank, new_loser_rank = calc_elo(
-            row['Wteam'], row['Lteam'], row['Season'])
-        team_elos[row['Season']][row['Wteam']] = new_winner_rank
-        team_elos[row['Season']][row['Lteam']] = new_loser_rank
+            row['WTeamID'], row['LTeamID'], row['Season'])
+        team_elos[row['Season']][row['WTeamID']] = new_winner_rank
+        team_elos[row['Season']][row['LTeamID']] = new_loser_rank
 
     return X, y
+
+
+def find_winner(team1, team2):
+    print("Looking for %d vs %d" % (team1, team2))
+    # cycle through all results
+    for pred in submission_data:
+        parts = pred[0].split('_')
+        if (int(parts[1]) == team1 and int(parts[2]) == team2) or (int(parts[2]) == team1 and int(parts[1]) == team2):
+            if float(pred[1]) > .5:
+              return int(parts[1]), float(pred[1])
+            else:
+              return int(parts[2]), (1-float(pred[1]))
+    print("Could not find winner - exiting program.")
+    exit(0)
 
 
 def usage():
@@ -242,6 +256,22 @@ def main(argv):
         print("Selecting current year for picks.\n")
         prediction_year = int(datetime.datetime.now().strftime("%Y"))
 
+    team_id_map = build_team_dict(folder)
+
+    # Now predict tournament matchups.
+    print("Tournament teams for %d:" % prediction_year)
+    seeds = pd.read_csv(folder + '/NCAATourneySeeds.csv')
+    # for i in range(2016, 2017):
+    tourney_teams = []
+    tourney_seeds_map = {}
+    tourney_id_to_seed_map = {}
+    for index, row in seeds.iterrows():
+        if row['Season'] == prediction_year:
+            tourney_teams.append(row['TeamID'])
+            print("Seed: %s, TeamID: %d, TeamName: %s" % (row['Seed'], int(row['TeamID']), team_id_map[row['TeamID']]))
+            tourney_seeds_map[row['Seed']] = int(row['TeamID'])
+            tourney_id_to_seed_map[int(row['TeamID'])] = row['Seed']
+
     try:
         ret = os.access(folder, os.W_OK)
         if not ret:
@@ -253,7 +283,7 @@ def main(argv):
 
     initialize_data(prediction_year)
     season_data = pd.read_csv(folder + '/RegularSeasonDetailedResults.csv')
-    tourney_data = pd.read_csv(folder + '/TourneyDetailedResults.csv')
+    tourney_data = pd.read_csv(folder + '/NCAATourneyDetailedResults.csv')
     frames = [season_data, tourney_data]
     all_data = pd.concat(frames)
 
@@ -273,16 +303,13 @@ def main(argv):
 
     model.fit(X, y)
 
-    # Now predict tournament matchups.
-    print("Getting teams.")
-    seeds = pd.read_csv(folder + '/TourneySeeds.csv')
-    # for i in range(2016, 2017):
-    tourney_teams = []
-    for index, row in seeds.iterrows():
-        if row['Season'] == prediction_year:
-            tourney_teams.append(row['Team'])
 
-    # Build our prediction of every matchup.
+    if len(tourney_teams) == 68:
+        print("Found all teams for tournament.")
+    else:
+        print("WARNING: Only Found %d teams for tournament. Please check input data." % len(tourney_teams))
+
+    # Build our prediction of every matchup - useful for predicting future games.
     print("Predicting matchups.")
     tourney_teams.sort()
     for team_1 in tourney_teams:
@@ -304,7 +331,6 @@ def main(argv):
     # Now so that we can use this to fill out a bracket, create a readable
     # version.
     print("Outputting readable results.")
-    team_id_map = build_team_dict(folder)
     readable = []
     less_readable = []  # A version that's easy to look up.
     for pred in submission_data:
@@ -332,6 +358,34 @@ def main(argv):
     with open(folder + '/less-readable-predictions.csv', 'w') as f:
         writer = csv.writer(f)
         writer.writerows(less_readable)
+
+    # Run current tournament for filling out brackets
+    slots = pd.read_csv(folder + '/NCAATourneySlots.csv')
+    tourney_results = {}
+    tourney_results_formatted = ['slot', 'team1', 'team2', 'winner', 'probability']
+    for index, slot in slots.iterrows():
+        if slot['Season'] == prediction_year:
+            print("In Slot %s, Computing %s vs %s" % (slot['Slot'], slot['StrongSeed'], slot['WeakSeed']) )
+            team1 = ''
+            team2 = ''
+            try:
+                print("Checking winner from existing results %s vs %s" % (tourney_results[slot['StrongSeed']], tourney_results[slot['WeakSeed']]))
+                team1 = tourney_results[slot['StrongSeed']]
+                team2 = tourney_results[slot['WeakSeed']]
+                winner, probability = find_winner(tourney_results[slot['StrongSeed']], tourney_results[slot['WeakSeed']])
+            except:
+                print ("Checking winner from original seeds %s vs %s" % (tourney_seeds_map[slot['StrongSeed']], tourney_seeds_map[slot['WeakSeed']]))
+                team1 = tourney_seeds_map[slot['StrongSeed']]
+                team2 = tourney_seeds_map[slot['WeakSeed']]
+                winner, probability = find_winner(tourney_seeds_map[slot['StrongSeed']], tourney_seeds_map[slot['WeakSeed']])
+            print("Winner: %d" % winner)
+            tourney_seeds_map[slot['Slot']] = winner
+            tourney_results[slot['Slot']] = winner
+            tourney_results_formatted.append([slot['Slot'], team_id_map[team1] + "(" + tourney_id_to_seed_map[team1] + ")", team_id_map[team2] + "(" + tourney_id_to_seed_map[team2] + ")", team_id_map[winner], probability])
+
+    with open(folder + '/tournament_results.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(tourney_results_formatted)
 
 
 if __name__ == "__main__":
