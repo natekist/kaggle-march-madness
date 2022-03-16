@@ -1,5 +1,5 @@
 """
-This tool uses the data provided by the Kaggle Machine Learning Mania challenge
+This tool uses the 2022 provided by the Kaggle Machine Learning Mania challenge
 and generates predictions for March Madness brackets.
 
 More about the competition:
@@ -116,7 +116,7 @@ def get_stat(season, team, field):
 
 
 def build_team_dict(folder):
-    team_ids = pd.read_csv(folder + '/Teams.csv')
+    team_ids = pd.read_csv(folder + '/MTeams.csv')
     team_id_map = {}
     for index, row in team_ids.iterrows():
         team_id_map[row['TeamID']] = row['TeamName']
@@ -128,7 +128,7 @@ def build_season_data(all_data):
     # Store the elo per season so we can retrieve their end elo
     # later in order to predict the tournaments without having to
     # inject the prediction into this loop.
-    print("Building season data.")
+    print("Building season 2022.")
     for index, row in all_data.iterrows():
         # Used to skip matchups where we don't have usable stats yet.
         skip = 0
@@ -151,7 +151,7 @@ def build_season_data(all_data):
         for field in stat_fields:
             team_1_stat = get_stat(row['Season'], row['WTeamID'], field)
             team_2_stat = get_stat(row['Season'], row['LTeamID'], field)
-            if team_1_stat is not 0 and team_2_stat is not 0:
+            if team_1_stat != 0 and team_2_stat != 0:
                 team_1_features.append(team_1_stat)
                 team_2_features.append(team_2_stat)
             else:
@@ -168,7 +168,7 @@ def build_season_data(all_data):
                 y.append(1)
 
         # AFTER we add the current stuff to the prediction, update for
-        # next time. Order here is key so we don't fit on data from the
+        # next time. Order here is key so we don't fit on 2022 from the
         # same game we're trying to predict.
         if row['WFTA'] != 0 and row['LFTA'] != 0:
             stat_1_fields = {
@@ -228,7 +228,7 @@ def find_winner(team1, team2):
 
 
 def usage():
-    print("Usage: %s -d <data directory> " % sys.argv[0])
+    print("Usage: %s -d <2022 directory> " % sys.argv[0])
 
 def main(argv):
     folder = prediction_year = ''
@@ -260,7 +260,7 @@ def main(argv):
 
     # Now predict tournament matchups.
     print("Tournament teams for %d:" % prediction_year)
-    seeds = pd.read_csv(folder + '/NCAATourneySeeds.csv')
+    seeds = pd.read_csv(folder + '/MNCAATourneySeeds.csv')
     # for i in range(2016, 2017):
     tourney_teams = []
     tourney_seeds_map = {}
@@ -282,18 +282,18 @@ def main(argv):
     print("Generating results for the %d tournament." % prediction_year)
 
     initialize_data(prediction_year)
-    season_data = pd.read_csv(folder + '/RegularSeasonDetailedResults.csv')
-    tourney_data = pd.read_csv(folder + '/NCAATourneyDetailedResults.csv')
+    season_data = pd.read_csv(folder + '/MRegularSeasonDetailedResults.csv')
+    tourney_data = pd.read_csv(folder + '/MNCAATourneyDetailedResults.csv')
     frames = [season_data, tourney_data]
     all_data = pd.concat(frames)
 
-    # Build the working data.
+    # Build the working 2022.
     X, y = build_season_data(all_data)
 
     # Fit the model.
     print("Fitting on %d samples." % len(X))
 
-    model = linear_model.LogisticRegression()
+    model = linear_model.LogisticRegression(solver='lbfgs', max_iter=1000)
 
     # Check accuracy.
     print("Doing cross-validation.")
@@ -307,7 +307,7 @@ def main(argv):
     if len(tourney_teams) == 68:
         print("Found all teams for tournament.")
     else:
-        print("WARNING: Only Found %d teams for tournament. Please check input data." % len(tourney_teams))
+        print("WARNING: Only Found %d teams for tournament. Please check input 2022." % len(tourney_teams))
 
     # Build our prediction of every matchup - useful for predicting future games.
     print("Predicting matchups.")
@@ -360,7 +360,7 @@ def main(argv):
         writer.writerows(less_readable)
 
     # Run current tournament for filling out brackets
-    slots = pd.read_csv(folder + '/NCAATourneySlots.csv')
+    slots = pd.read_csv(folder + '/MNCAATourneySlots.csv')
     tourney_results = {}
     tourney_results_formatted = ['slot', 'team1', 'team2', 'winner', 'probability']
     for index, slot in slots.iterrows():
